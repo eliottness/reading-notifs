@@ -255,7 +255,7 @@ app.post('/notifications', async (c) => {
   const body = await c.req.parseBody();
   const type = String(body.type ?? '') as 'email' | 'push' | 'discord';
 
-  let config: Record<string, unknown> = {};
+  let config: Record<string, unknown>;
   if (type === 'email') {
     config = { address: user.email };
   } else if (type === 'discord') {

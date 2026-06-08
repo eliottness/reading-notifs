@@ -20,7 +20,7 @@ export class StealthFetcher implements Fetcher {
     const page = await browser.newPage();
     try {
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
-      return page.content();
+      return await page.content();
     } finally {
       await page.close();
     }
