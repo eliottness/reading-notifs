@@ -1,7 +1,7 @@
 # Build stage — compile TypeScript and generate DB migrations
 FROM node:22-alpine AS builder
 WORKDIR /app
-COPY package*.json ./
+COPY .npmrc package*.json ./
 RUN npm ci
 COPY tsconfig*.json drizzle.config.ts ./
 COPY src ./src
