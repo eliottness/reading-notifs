@@ -28,7 +28,7 @@
     "camoufox-js": "^0.10.0",
     "cheerio": "^1.2.0",
     "drizzle-orm": "^0.45.2",
-    "hono": "^4.6.0",
+    "hono": "^4.12.24",
     "nanoid": "^5.0.0",
     "node-cron": "^3.0.3",
     "nodemailer": "^8.0.10",
