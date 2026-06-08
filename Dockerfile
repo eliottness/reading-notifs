@@ -19,7 +19,7 @@ RUN apk add --no-cache \
     libx11 libxcb libxcomposite libxdamage libxext libxfixes libxrandr libxrender libxtst \
     font-noto ttf-freefont
 
-COPY package*.json ./
+COPY .npmrc package*.json ./
 # Install production deps then download the Camoufox browser binary (~300 MB, baked into image)
 RUN npm ci --omit=dev && npx camoufox-js fetch
 
