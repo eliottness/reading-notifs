@@ -1,5 +1,5 @@
 # Build stage — compile TypeScript and generate DB migrations
-FROM node:22-alpine AS builder
+FROM node:26-alpine AS builder
 WORKDIR /app
 COPY .npmrc package*.json ./
 RUN npm ci
@@ -8,7 +8,7 @@ COPY src ./src
 RUN npm run build && npm run db:generate
 
 # Runtime stage — Alpine + Camoufox (glibc-compat Firefox) for stealth fetching
-FROM node:22-alpine AS runtime
+FROM node:26-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
