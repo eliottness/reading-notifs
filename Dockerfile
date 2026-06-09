@@ -7,17 +7,18 @@ COPY tsconfig*.json drizzle.config.ts ./
 COPY src ./src
 RUN npm run build && npm run db:generate
 
-# Runtime stage — Alpine + Camoufox (glibc-compat Firefox) for stealth fetching
-FROM node:26-alpine AS runtime
+# Runtime stage — Debian 13 (trixie) glibc base; Camoufox is a Firefox fork and
+# needs genuine glibc, so Alpine + gcompat shims are not viable (browser launch hangs).
+FROM node:26-trixie-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
-# glibc compatibility shims + all runtime deps required by Camoufox/Firefox headless
-RUN apk add --no-cache \
-    gcompat libstdc++ libgcc nss \
-    gtk+3.0 dbus-glib alsa-lib pango cairo \
-    libx11 libxcb libxcomposite libxdamage libxext libxfixes libxrandr libxrender libxtst \
-    font-noto ttf-freefont
+# Installing firefox-esr pulls in the full set of transitive shared libraries that
+# Camoufox's bundled Firefox binary depends on, avoiding hand-enumeration of trixie's
+# t64-renamed lib packages. fonts-liberation gives baseline glyph coverage for rendering.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends firefox-esr fonts-liberation \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY .npmrc package*.json ./
 # Install production deps then download the Camoufox browser binary (~300 MB, baked into image)

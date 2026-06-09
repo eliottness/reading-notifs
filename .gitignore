@@ -11,3 +11,15 @@ drizzle/
 *.tsbuildinfo
 .eslintcache
 .omc/
+
+# e2e test artifacts
+.tmp/
+test-results/
+playwright-report/
+
+# never commit key/cert material, even for mocks
+*.pem
+tests-e2e/fixtures/certs/
+
+# local Claude Code session state
+.claude/

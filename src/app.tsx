@@ -4,12 +4,13 @@ import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { auth } from './auth/index.js';
-import { requireAuth } from './auth/middleware.js';
+import { requireAuth, requireAdmin } from './auth/middleware.js';
 import { logger } from './logger.js';
 import { db } from './db/index.js';
 import { works, sites, subscriptions, notificationChannels } from './db/schema.js';
 import { getAdapterForUrl } from './adapters/registry.js';
 import { getFetcher } from './fetchers/index.js';
+import { checkWork } from './poller/check-work.js';
 import { LoginPage, LoginFormPartial } from './ui/pages/login.js';
 import { DashboardPage } from './ui/pages/dashboard.js';
 import { AddWorkPage } from './ui/pages/add-work.js';
@@ -54,6 +55,17 @@ function isDiscordWebhookUrl(url: string): boolean {
   }
 }
 
+const TEST_MODE = !!process.env.TEST_MODE;
+
+// Defense-in-depth tripwire: TEST_MODE mounts /__test__ (mints sessions for any email, wipes data)
+// and serves an instrumented Service Worker. Those are catastrophic if ever enabled in a deployed
+// environment, so refuse to boot rather than rely solely on the per-seam env guards.
+if (TEST_MODE && process.env.NODE_ENV === 'production') {
+  throw new Error(
+    'TEST_MODE must never be enabled in production: it exposes /__test__ auth and data backdoors.',
+  );
+}
+
 const app = new Hono<{ Variables: Variables }>();
 
 // Request logger
@@ -70,6 +82,17 @@ app.use('*', async (c, next) => {
 
 // Static assets: dev serves from src/public; the production build copies them to dist/public
 const publicDir = process.env.NODE_ENV === 'production' ? './dist/public' : './src/public';
+// In TEST_MODE, serve the instrumented Service Worker so e2e tests can observe showNotification
+// calls from within the worker scope. Registered before the static handler so it takes precedence.
+if (TEST_MODE) {
+  app.get('/sw.js', async (c) => {
+    const { readFile } = await import('node:fs/promises');
+    // Resolved relative to the process cwd (repo root for the e2e webServer).
+    const swPath = process.env.E2E_SW_PATH ?? './tests-e2e/fixtures/instrumented-sw.js';
+    const body = await readFile(swPath, 'utf8');
+    return c.body(body, 200, { 'Content-Type': 'application/javascript; charset=utf-8' });
+  });
+}
 app.use('/sw.js', serveStatic({ path: `${publicDir}/sw.js` }));
 app.use('/push.js', serveStatic({ path: `${publicDir}/push.js` }));
 
@@ -232,7 +255,8 @@ app.delete('/works/:id', async (c) => {
     await db.delete(works).where(eq(works.id, workId));
   }
 
-  return c.body(null, 204);
+  // 200 (not 204) so the dashboard's hx-swap="delete" removes the card; htmx ignores 204 responses.
+  return c.body(null, 200);
 });
 
 app.get('/notifications', async (c) => {
@@ -289,7 +313,21 @@ app.delete('/notifications/:id', async (c) => {
   await db
     .delete(notificationChannels)
     .where(and(eq(notificationChannels.id, id), eq(notificationChannels.userId, user.id)));
-  return c.redirect('/notifications');
+
+  // Re-render the page (hx-target="body") rather than redirecting: a 302 on a DELETE is followed by
+  // the browser as another DELETE (→ 404), so htmx would never swap. Returning the HTML directly
+  // updates the UI in place.
+  const channels = await db
+    .select()
+    .from(notificationChannels)
+    .where(eq(notificationChannels.userId, user.id));
+  return c.html(
+    <NotificationsPage
+      user={user}
+      channels={channels}
+      vapidPublicKey={process.env.VAPID_PUBLIC_KEY ?? ''}
+    />,
+  );
 });
 
 app.post('/push/subscribe', async (c) => {
@@ -310,5 +348,67 @@ app.post('/push/subscribe', async (c) => {
 
   return c.json({ ok: true });
 });
+
+// Admin-only JSON API. Hono's '/admin/*' wildcard matches sub-paths but NOT the bare '/admin' path,
+// so both are registered (mirroring the /notifications + /notifications/* split above). This guards
+// any future /admin dashboard page by default rather than relying on a contributor remembering to.
+app.use('/admin', requireAdmin);
+app.use('/admin/*', requireAdmin);
+
+// Synchronously refresh a single work: await the same checkWork pipeline the cron poller uses and
+// report an honest outcome. The DB pollingLock (in checkWork) doubles as the rate limiter — a
+// concurrent check (e.g. the cron run) surfaces as 409 rather than a silent no-op.
+app.post('/admin/refresh/:workId', async (c) => {
+  const user = c.get('user');
+  const workId = c.req.param('workId');
+
+  try {
+    const before = await db.select().from(works).where(eq(works.id, workId)).get();
+    const result = await checkWork(workId);
+
+    if (result === 'not_found') return c.json({ ok: false, reason: 'not_found' }, 404);
+    if (result === 'no_adapter') return c.json({ ok: false, reason: 'no_adapter' }, 422);
+    if (result === 'locked') return c.json({ ok: false, reason: 'locked' }, 409);
+    if (result === 'error') return c.json({ ok: false, reason: 'error' }, 502);
+
+    // Exhaustiveness guard: a new CheckWorkResult variant added later must be handled explicitly
+    // above rather than silently falling through to the 200 success path.
+    if (result !== 'updated' && result !== 'unchanged') {
+      const _exhaustive: never = result;
+      logger.error('admin_refresh_unknown_result', { work_id: workId, result: _exhaustive });
+      return c.json({ ok: false, reason: 'error' }, 500);
+    }
+
+    const after = await db.select().from(works).where(eq(works.id, workId)).get();
+    logger.info('admin_refresh', {
+      // Log the email domain only, never the full address (mirrors magic_link_sent above).
+      email_domain: user.email.split('@')[1],
+      work_id: workId,
+      from: before?.currentChapterCount ?? null,
+      to: after?.currentChapterCount ?? null,
+    });
+    return c.json({
+      ok: true,
+      changed: result === 'updated',
+      previousChapterCount: before?.currentChapterCount ?? null,
+      currentChapterCount: after?.currentChapterCount ?? null,
+      refreshedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    logger.error('admin_refresh_failed', {
+      work_id: workId,
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
+    return c.json({ ok: false, reason: 'error' }, 500);
+  }
+});
+
+// Mounted ONLY when TEST_MODE is truthy — provably inert (404) in production. Dynamic import keeps
+// the test-only module out of production code paths.
+if (TEST_MODE) {
+  const { testRouter } = await import('./test-support/routes.js');
+  app.route('/__test__', testRouter);
+}
 
 export default app;
