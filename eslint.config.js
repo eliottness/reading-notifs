@@ -8,6 +8,14 @@ export default tseslint.config(
   tseslint.configs.recommended,
   eslintConfigPrettier,
   {
-    ignores: ['dist/**', 'drizzle/**', 'node_modules/**', '.venv/**', 'src/public/**'],
+    ignores: [
+      'dist/**',
+      'drizzle/**',
+      'node_modules/**',
+      '.venv/**',
+      'src/public/**',
+      // Service-worker source (browser/worker globals, not linted as Node app code).
+      'tests-e2e/fixtures/instrumented-sw.js',
+    ],
   },
 );

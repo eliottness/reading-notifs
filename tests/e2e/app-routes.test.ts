@@ -297,7 +297,7 @@ describe('Authenticated routes', () => {
       method: 'DELETE',
       headers: { cookie },
     });
-    expect(delRes.status).toBe(204);
+    expect(delRes.status).toBe(200);
 
     // Verify it's gone
     const afterHtml = await (await r('/dashboard', { headers: { cookie } })).text();
@@ -349,7 +349,8 @@ describe('Authenticated routes', () => {
       method: 'DELETE',
       headers: { cookie },
     });
-    expect([302, 303]).toContain(delRes.status);
+    // Returns the re-rendered notifications page (200) so htmx can swap it in place.
+    expect(delRes.status).toBe(200);
   });
 
   // ── Multi-user isolation ─────────────────────

@@ -24,6 +24,12 @@ export const auth = betterAuth({
   plugins: [
     magicLink({
       sendMagicLink: async ({ email, url }) => {
+        // TEST_MODE-only: stash the verify URL so /__test__/login can mint a session fast
+        // without an email round-trip. Inert in prod; the email is still sent below regardless.
+        if (process.env.TEST_MODE) {
+          const { recordMagicLink } = await import('../test-support/state.js');
+          recordMagicLink(email, url);
+        }
         await sendEmail({
           to: email,
           subject: 'Your reading-notifs login link',
