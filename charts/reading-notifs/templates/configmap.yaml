@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "reading-notifs.fullname" . }}
+  labels:
+    {{- include "reading-notifs.labels" . | nindent 4 }}
+data:
+  NODE_ENV: {{ .Values.config.nodeEnv | quote }}
+  APP_URL: {{ include "reading-notifs.appUrl" . | quote }}
+  DATABASE_URL: {{ .Values.config.databaseUrl | quote }}
+  ADMIN_EMAILS: {{ .Values.config.adminEmails | quote }}
+  SMTP_HOST: {{ .Values.config.smtp.host | quote }}
+  SMTP_PORT: {{ .Values.config.smtp.port | toString | quote }}
+  SMTP_FROM: {{ .Values.config.smtp.from | quote }}
+  VAPID_PUBLIC_KEY: {{ .Values.config.vapid.publicKey | quote }}
+  VAPID_SUBJECT: {{ .Values.config.vapid.subject | quote }}

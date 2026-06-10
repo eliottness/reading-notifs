@@ -4,3 +4,5 @@ node_modules/
 package-lock.json
 .venv/
 .omc/
+# Helm chart templates contain Go templating ({{ ... }}) that is not valid YAML.
+charts/reading-notifs/templates/

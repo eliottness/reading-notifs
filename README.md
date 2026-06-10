@@ -106,6 +106,24 @@ docker run -d \
 > The image is Alpine-based and ships a bundled [Camoufox](https://camoufox.com/) (Firefox)
 > binary for stealth-fetching bot-protected sites like Asura Scans.
 
+## Kubernetes (Helm)
+
+A Helm chart lives in [`charts/reading-notifs`](charts/reading-notifs). It runs a single
+replica with a persistent SQLite volume (the app is stateful and not horizontally scalable —
+see the chart README for details).
+
+Install from the OCI registry (published on each release tag):
+
+```bash
+helm install reading-notifs oci://ghcr.io/eliottness/charts/reading-notifs \
+  --version <chart-version> \
+  --set secrets.betterAuthSecret="$(openssl rand -hex 32)" \
+  --set ingress.host=notifs.example.com
+```
+
+Or from a local checkout: `helm install reading-notifs ./charts/reading-notifs --set secrets.betterAuthSecret=...`.
+See [`charts/reading-notifs/README.md`](charts/reading-notifs/README.md) for all values.
+
 ## Extending
 
 ### Add a site adapter

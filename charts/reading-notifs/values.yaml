@@ -1,0 +1,119 @@
+# Default values for reading-notifs.
+
+# -- Number of replicas. DO NOT raise above 1: reading-notifs uses an embedded SQLite
+# database (single writer, WAL mode) and runs the chapter poller as an in-process cron.
+# Multiple replicas would corrupt the DB and duplicate notifications.
+replicaCount: 1
+
+image:
+  repository: ghcr.io/eliottness/reading-notifs
+  # -- Image tag. Defaults to the chart's appVersion when left empty.
+  tag: ''
+  pullPolicy: IfNotPresent
+
+# -- Image pull secrets for private registries (e.g. ghcr.io if the package is private).
+imagePullSecrets: []
+
+nameOverride: ''
+fullnameOverride: ''
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ''
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext: {}
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: true
+  className: ''
+  # -- Hostname the app is served on. Also used to derive APP_URL when config.appUrl is empty.
+  host: reading-notifs.local
+  # -- Scheme used to derive APP_URL from the host (http or https). TLS itself is left to
+  # the cluster operator (no tls block is rendered).
+  scheme: http
+  path: /
+  pathType: Prefix
+  annotations: {}
+
+persistence:
+  enabled: true
+  # -- Use an existing PVC instead of creating one. When set, size/storageClass are ignored.
+  existingClaim: ''
+  accessMode: ReadWriteOnce
+  size: 1Gi
+  # -- StorageClass. Empty uses the cluster default; "-" disables dynamic provisioning.
+  storageClass: ''
+  # -- Mount path for the data volume. config.databaseUrl should live under this path.
+  mountPath: /app/data
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: '1'
+    memory: 1Gi
+
+# -- TCP probes (the app exposes no HTTP health endpoint). startupProbe covers the
+# migration + seed work done before the server starts listening.
+startupProbe:
+  enabled: true
+  failureThreshold: 30
+  periodSeconds: 5
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 10
+  periodSeconds: 20
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Non-secret configuration -> rendered into a ConfigMap and injected via envFrom.
+config:
+  # -- Public base URL of the app. If empty and ingress is enabled, derived as
+  # "<ingress.scheme>://<ingress.host>".
+  appUrl: ''
+  nodeEnv: production
+  # -- Comma-separated emails granted access to /admin/* endpoints. Empty disables admin.
+  adminEmails: ''
+  # -- SQLite file path. Keep it under persistence.mountPath so data survives restarts.
+  databaseUrl: /app/data/reading-notifs.db
+  smtp:
+    host: ''
+    port: 1025
+    from: noreply@reading-notifs.local
+  vapid:
+    publicKey: ''
+    subject: mailto:admin@reading-notifs.local
+
+# Secret configuration -> rendered into a Secret and injected via envFrom.
+secrets:
+  # -- Use an existing Secret instead of rendering one from the values below. The Secret
+  # must define the env keys: BETTER_AUTH_SECRET, SMTP_USER, SMTP_PASS, VAPID_PRIVATE_KEY.
+  existingSecret: ''
+  # -- REQUIRED unless existingSecret is set. The chart fails to render without it.
+  betterAuthSecret: ''
+  smtp:
+    user: ''
+    pass: ''
+  vapid:
+    privateKey: ''
+
+# -- Extra environment variables appended to the container (list of {name,value} or
+# {name,valueFrom}). Useful for one-off overrides without editing the chart.
+# Do NOT set PORT here — it is derived from service.port (see deployment.yaml).
+extraEnv: []

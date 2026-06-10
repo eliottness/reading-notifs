@@ -65,3 +65,29 @@ jobs:
         # The Playwright webServer (see playwright.config.ts) boots the app with the full TEST_MODE /
         # VAPID / SMTP / PORT env; no extra env is needed here.
         run: npm run test:e2e
+
+  helm:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4.3.0
+
+      - name: Lint chart
+        run: helm lint charts/reading-notifs
+
+      - name: Render chart (default values + required secret)
+        run: helm template reading-notifs charts/reading-notifs --set secrets.betterAuthSecret=ci-test > /tmp/rendered.yaml
+
+      - name: Render chart (ingress disabled, existing secret)
+        run: helm template reading-notifs charts/reading-notifs --set ingress.enabled=false --set secrets.existingSecret=my-secret > /dev/null
+
+      - name: Fail-fast when the required secret is missing
+        run: |
+          if helm template reading-notifs charts/reading-notifs > /dev/null 2>&1; then
+            echo "::error::Chart rendered without secrets.betterAuthSecret; it should have failed."
+            exit 1
+          fi
+          echo "Chart correctly refused to render without secrets.betterAuthSecret."

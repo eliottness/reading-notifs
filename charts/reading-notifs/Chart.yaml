@@ -1,0 +1,21 @@
+apiVersion: v2
+name: reading-notifs
+description: A Helm chart for reading-notifs — a manga/webtoon chapter notifier (Hono + HTMX + SQLite + better-auth).
+type: application
+# Chart version. Bumped independently of the application; the helm-publish workflow
+# overrides this with the git tag at release time.
+version: 0.1.0
+# The application version this chart deploys (matches package.json). Used as the default
+# image tag when image.tag is left empty in values.yaml.
+appVersion: '0.1.0'
+home: https://github.com/eliottness/reading-notifs
+sources:
+  - https://github.com/eliottness/reading-notifs
+keywords:
+  - manga
+  - webtoon
+  - notifications
+  - web-push
+maintainers:
+  - name: eliottness
+    url: https://github.com/eliottness

@@ -1,0 +1,37 @@
+name: Helm Publish
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4.3.0
+
+      - name: Lint chart
+        run: helm lint charts/reading-notifs
+
+      - name: Package chart
+        # Derive the chart/app version from the git tag (strip the leading "v").
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "Packaging chart version ${VERSION}"
+          helm package charts/reading-notifs --version "${VERSION}" --app-version "${VERSION}" --destination dist
+
+      - name: Log in to ghcr.io
+        # Pipe the token via stdin so it never appears in the runner's process list.
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Push chart to ghcr.io
+        run: |
+          CHART=$(ls dist/reading-notifs-*.tgz)
+          helm push "${CHART}" "oci://ghcr.io/${{ github.repository_owner }}/charts"

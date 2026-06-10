@@ -1,0 +1,31 @@
+reading-notifs has been deployed.
+
+App URL: {{ include "reading-notifs.appUrl" . }}
+
+{{- if .Values.ingress.enabled }}
+
+1. The app is exposed via Ingress at host "{{ .Values.ingress.host }}".
+   Make sure this host resolves to your ingress controller (add it to /etc/hosts for local clusters).
+{{- else }}
+
+1. Ingress is disabled. Reach the app with a port-forward:
+
+   kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "reading-notifs.fullname" . }} 3000:{{ .Values.service.port }}
+   # then open http://localhost:3000
+{{- end }}
+
+2. Watch the rollout:
+
+   kubectl --namespace {{ .Release.Namespace }} rollout status deploy/{{ include "reading-notifs.fullname" . }}
+
+{{- if not .Values.config.adminEmails }}
+
+NOTE: config.adminEmails is empty, so the /admin/* endpoints are disabled.
+      Set it (comma-separated) to enable admin access.
+{{- end }}
+{{- if and (not .Values.config.vapid.publicKey) (not .Values.secrets.existingSecret) (not .Values.secrets.vapid.privateKey) }}
+
+NOTE: No VAPID keys are configured, so Web Push notifications are disabled.
+      Generate a keypair with `npx web-push generate-vapid-keys` and set
+      config.vapid.publicKey + secrets.vapid.privateKey.
+{{- end }}
