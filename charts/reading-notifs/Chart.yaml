@@ -1,6 +1,6 @@
 apiVersion: v2
 name: reading-notifs
-description: A Helm chart for reading-notifs — a manga/webtoon chapter notifier (Hono + HTMX + SQLite + better-auth).
+description: A Helm chart for reading-notifs — a manga/webtoon chapter notifier
 type: application
 # Chart version. Bumped independently of the application; the helm-publish workflow
 # overrides this with the git tag at release time.
