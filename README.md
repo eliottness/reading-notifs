@@ -55,22 +55,22 @@ npm run dev            # http://localhost:3000
 
 ## Environment variables
 
-| Variable             | Required | Default                        | Description                                     |
-| -------------------- | -------- | ------------------------------ | ----------------------------------------------- |
-| `DATABASE_URL`       | yes      | `local.db`                     | SQLite file path (use `:memory:` for tests)     |
-| `BETTER_AUTH_SECRET` | yes      | —                              | Secret key for session tokens                   |
-| `APP_URL`            | no       | `http://localhost:3000`        | Public base URL (used in email links)           |
-| `SMTP_HOST`          | no       | `localhost`                    | SMTP server host                                |
-| `SMTP_PORT`          | no       | `1025`                         | SMTP server port                                |
-| `SMTP_FROM`          | no       | `noreply@reading-notifs.local` | Sender address                                  |
-| `SMTP_USER`          | no       | —                              | SMTP username (leave blank for unauthenticated) |
-| `SMTP_PASS`          | no       | —                              | SMTP password                                   |
-| `VAPID_PUBLIC_KEY`   | no       | —                              | Web Push VAPID public key                       |
-| `VAPID_PRIVATE_KEY`  | no       | —                              | Web Push VAPID private key                      |
-| `VAPID_SUBJECT`      | no       | `mailto:admin@…`               | VAPID contact URI                               |
+| Variable             | Required | Default                        | Description                                                         |
+| -------------------- | -------- | ------------------------------ | ------------------------------------------------------------------- |
+| `DATABASE_URL`       | yes      | `local.db`                     | SQLite file path (use `:memory:` for tests)                         |
+| `BETTER_AUTH_SECRET` | yes      | —                              | Secret key for session tokens                                       |
+| `APP_URL`            | no       | `http://localhost:3000`        | Public base URL (used in email links)                               |
+| `SMTP_HOST`          | no       | `localhost`                    | SMTP server host                                                    |
+| `SMTP_PORT`          | no       | `1025`                         | SMTP server port                                                    |
+| `SMTP_FROM`          | no       | `noreply@reading-notifs.local` | Sender address                                                      |
+| `SMTP_USER`          | no       | —                              | SMTP username (leave blank for unauthenticated)                     |
+| `SMTP_PASS`          | no       | —                              | SMTP password                                                       |
+| `VAPID_PUBLIC_KEY`   | no       | —                              | Web Push VAPID public key                                           |
+| `VAPID_PRIVATE_KEY`  | no       | —                              | Web Push VAPID private key                                          |
+| `VAPID_SUBJECT`      | no       | `mailto:admin@…`               | VAPID contact URI                                                   |
 | `ADMIN_EMAILS`       | no       | — (no admins)                  | Comma-separated emails granted `/admin/*` access (case-insensitive) |
-| `ALLOWED_DOMAINS`    | no       | — (allow all)                  | Comma-separated email domains permitted to sign in/up |
-| `ALLOWED_EMAILS`     | no       | — (allow all)                  | Comma-separated individual emails permitted to sign in/up |
+| `ALLOWED_DOMAINS`    | no       | — (allow all)                  | Comma-separated email domains permitted to sign in/up               |
+| `ALLOWED_EMAILS`     | no       | — (allow all)                  | Comma-separated individual emails permitted to sign in/up           |
 
 Generate VAPID keys:
 
