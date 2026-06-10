@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "reading-notifs.fullname" . }}-test-connection"
+  labels:
+    {{- include "reading-notifs.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  containers:
+    - name: wget
+      image: busybox:1.37
+      # The app has no health endpoint; a 2xx/3xx/auth-redirect from the root proves it serves HTTP.
+      command: ['wget']
+      args: ['--spider', '-S', '--tries=1', '--timeout=10', '{{ include "reading-notifs.fullname" . }}:{{ .Values.service.port }}/']
