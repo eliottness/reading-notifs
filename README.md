@@ -68,6 +68,9 @@ npm run dev            # http://localhost:3000
 | `VAPID_PUBLIC_KEY`   | no       | —                              | Web Push VAPID public key                       |
 | `VAPID_PRIVATE_KEY`  | no       | —                              | Web Push VAPID private key                      |
 | `VAPID_SUBJECT`      | no       | `mailto:admin@…`               | VAPID contact URI                               |
+| `ADMIN_EMAILS`       | no       | — (no admins)                  | Comma-separated emails granted `/admin/*` access (case-insensitive) |
+| `ALLOWED_DOMAINS`    | no       | — (allow all)                  | Comma-separated email domains permitted to sign in/up |
+| `ALLOWED_EMAILS`     | no       | — (allow all)                  | Comma-separated individual emails permitted to sign in/up |
 
 Generate VAPID keys:
 

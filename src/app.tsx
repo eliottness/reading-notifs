@@ -5,6 +5,7 @@ import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { auth } from './auth/index.js';
 import { requireAuth, requireAdmin } from './auth/middleware.js';
+import { isEmailAllowed } from './auth/allowlist.js';
 import { logger } from './logger.js';
 import { db } from './db/index.js';
 import { works, sites, subscriptions, notificationChannels } from './db/schema.js';
@@ -115,6 +116,15 @@ app.post('/auth/send-magic-link', async (c) => {
   const body = await c.req.parseBody();
   const email = String(body.email ?? '');
   if (!email) return partial({ message: 'Please provide an email address.', isError: true }, 400);
+
+  // Access-control gate (see src/auth/allowlist.ts). Short-circuit here so we don't log a
+  // misleading magic_link_sent — but return the SAME success partial as a real send so the
+  // response leaks nothing about the allowlist. The sendMagicLink callback enforces the same
+  // rule as the bypass-proof backstop for the native /api/auth/** endpoint.
+  if (!isEmailAllowed(email)) {
+    logger.warn('magic_link_blocked', { email_domain: email.split('@')[1] });
+    return partial({ message: `Check your email (${email}) for a login link.` });
+  }
 
   try {
     await auth.api.signInMagicLink({
