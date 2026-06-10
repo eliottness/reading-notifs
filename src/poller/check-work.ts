@@ -15,7 +15,7 @@ export type CheckWorkResult =
   | 'locked' // another check (e.g. the cron poller) already holds the lock; no-op
   | 'not_found' // no work row with this id
   | 'no_adapter' // the work's site has no registered adapter (misconfiguration)
-  | 'error'; // the fetch/extract pipeline threw (logged); count not updated
+  | 'error'; // the fetch/extract pipeline threw OR yielded no count (persisted to the work row)
 
 export async function checkWork(workId: string): Promise<CheckWorkResult> {
   const row = await db
@@ -46,10 +46,43 @@ export async function checkWork(workId: string): Promise<CheckWorkResult> {
     const content = await fetcher.fetch(work.chapterListUrl);
     const count = adapter.extractChapterCount(content);
 
-    await db.update(works).set({ lastCheckedAt: new Date() }).where(eq(works.id, workId));
+    if (count === null) {
+      // The fetch succeeded but the adapter could not derive a usable chapter count (unparseable
+      // response or empty result). Record it as a refresh error and surface it on the dashboard.
+      // Critically, do NOT stamp lastCheckedAt here — a failed extract must not masquerade as a
+      // clean check (the bug this path replaces).
+      const message = 'Could not extract a chapter count from the page';
+      await db
+        .update(works)
+        .set({
+          lastRefreshStatus: 'error',
+          lastRefreshErrorMessage: message,
+          lastRefreshFailureAt: new Date(),
+        })
+        .where(eq(works.id, workId));
+      logger.warn('poller_extract_empty', {
+        work_id: workId,
+        title: work.title,
+        url: work.chapterListUrl,
+      });
+      return 'error';
+    }
 
-    if (count !== null && count > work.currentChapterCount) {
-      await db.update(works).set({ currentChapterCount: count }).where(eq(works.id, workId));
+    // Genuine success: stamp the check time and clear any prior error. When the count rose, also
+    // bump the count and record when we detected the new chapter, then notify.
+    const now = new Date();
+    const isNewChapter = count > work.currentChapterCount;
+    await db
+      .update(works)
+      .set({
+        lastCheckedAt: now,
+        lastRefreshStatus: 'success',
+        lastRefreshErrorMessage: null,
+        ...(isNewChapter ? { currentChapterCount: count, lastNewChapterAt: now } : {}),
+      })
+      .where(eq(works.id, workId));
+
+    if (isNewChapter) {
       logger.info('new_chapter', {
         work_id: workId,
         title: work.title,
@@ -61,12 +94,21 @@ export async function checkWork(workId: string): Promise<CheckWorkResult> {
     }
     return 'unchanged';
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    await db
+      .update(works)
+      .set({
+        lastRefreshStatus: 'error',
+        lastRefreshErrorMessage: message,
+        lastRefreshFailureAt: new Date(),
+      })
+      .where(eq(works.id, workId));
     logger.error('poller_check_failed', {
       work_id: workId,
       title: work.title,
       url: work.chapterListUrl,
       fetcher: site.fetcherStrategy,
-      error: err instanceof Error ? err.message : String(err),
+      error: message,
       stack: err instanceof Error ? err.stack : undefined,
     });
     return 'error';
