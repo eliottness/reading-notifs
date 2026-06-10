@@ -166,6 +166,72 @@ describe('Magic link auth', () => {
 });
 
 // ─────────────────────────────────────────────
+// Access control (ALLOWED_DOMAINS / ALLOWED_EMAILS)
+// ─────────────────────────────────────────────
+
+describe('Access control allowlist', () => {
+  const ORIGINAL_DOMAINS = process.env.ALLOWED_DOMAINS;
+  const ORIGINAL_EMAILS = process.env.ALLOWED_EMAILS;
+
+  beforeAll(() => {
+    process.env.ALLOWED_DOMAINS = 'allowed.test';
+    process.env.ALLOWED_EMAILS = 'vip@elsewhere.test';
+  });
+
+  afterAll(() => {
+    if (ORIGINAL_DOMAINS === undefined) delete process.env.ALLOWED_DOMAINS;
+    else process.env.ALLOWED_DOMAINS = ORIGINAL_DOMAINS;
+    if (ORIGINAL_EMAILS === undefined) delete process.env.ALLOWED_EMAILS;
+    else process.env.ALLOWED_EMAILS = ORIGINAL_EMAILS;
+  });
+
+  beforeEach(() => {
+    smtp.emails.length = 0;
+  });
+
+  it('blocks a disallowed email: generic "Check your email" message, no email sent', async () => {
+    const res = await r('/auth/send-magic-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ email: 'intruder@blocked.test' }).toString(),
+    });
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain('Check your email');
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(smtp.emails.length, 'no email should be sent to a blocked address').toBe(0);
+  });
+
+  it('allows a domain-matched email through the normal route', async () => {
+    const res = await r('/auth/send-magic-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ email: 'member@allowed.test' }).toString(),
+    });
+    expect(res.status).toBe(200);
+
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(smtp.emails.length).toBeGreaterThan(0);
+    expect(smtp.emails[0].to).toContain('member@allowed.test');
+  });
+
+  it('enforces the allowlist on the native /api/auth bypass path too', async () => {
+    // This endpoint skips the /auth/send-magic-link route check entirely and relies solely on the
+    // sendMagicLink guard — the security-critical path.
+    const res = await r('/api/auth/sign-in/magic-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'intruder@blocked.test', callbackURL: '/dashboard' }),
+    });
+    // better-auth still returns success (we return early, not throw) — but no email is sent.
+    expect(res.status).toBe(200);
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(smtp.emails.length, 'native endpoint must not email a blocked address').toBe(0);
+  });
+});
+
+// ─────────────────────────────────────────────
 // Authenticated routes
 // ─────────────────────────────────────────────
 
