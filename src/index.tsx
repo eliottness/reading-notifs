@@ -11,6 +11,17 @@ const port = Number(process.env.PORT ?? 3000);
 Promise.resolve()
   .then(() => runMigrations())
   .then(() => seedSites())
+  .then(async () => {
+    // Fail-fast on a remote camoufox sidecar: probe the WS endpoint at boot so a broken
+    // sidecar crashes the process immediately (k8s/compose then restarts it) instead of
+    // surfacing minutes later on the poller's first tick. Only when the env var is set —
+    // the in-process fallback path needs no probe. See .omc/plans/camoufox-sidecar-split.md.
+    if (process.env.CAMOUFOX_WS_ENDPOINT) {
+      const { ensureBrowserConnectivity } = await import('./fetchers/stealth.js');
+      await ensureBrowserConnectivity();
+      logger.info('camoufox_connected', { endpoint: process.env.CAMOUFOX_WS_ENDPOINT });
+    }
+  })
   .then(() => {
     // Non-fatal: the app runs fine without admins, but the /admin/* endpoints are then inaccessible.
     if (getAdminEmails().size === 0) {

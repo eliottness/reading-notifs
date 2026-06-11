@@ -44,6 +44,48 @@ spec:
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.camoufox.enabled }}
+      # Native sidecar: an initContainer with restartPolicy: Always starts and passes its
+      # startupProbe BEFORE the app container, runs for the full pod lifetime, and restarts
+      # independently on crash. Requires Kubernetes >= 1.29 (GA) / >= 1.28 (beta gate).
+      initContainers:
+        - name: camoufox
+          restartPolicy: Always
+          # IMAGE VERSION IS LOCKED — thebtf/camoufox-server bundles Playwright 1.58.0, which
+          # MUST match playwright-core@~1.58.0 in package.json (WS handshake checks major.minor).
+          # Do NOT change without re-validating — see .omc/plans/camoufox-sidecar-split.md
+          # DIGEST ALSO IN: docker-compose.yml — when updating, change BOTH files.
+          # Only the registry prefix is operator-configurable (air-gapped/mirror deployments);
+          # repository+digest are hardcoded to prevent operator-induced version skew.
+          image: "{{ .Values.camoufox.image.registry | default `docker.io` }}/thebtf/camoufox-server@sha256:c19372cb2abf05dfb58cda0cc40324b157d47dc22aa791fb571c607f2337332c"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: WS_PATH
+              value: {{ .Values.camoufox.wsPath | quote }}
+            - name: WS_PORT
+              value: {{ .Values.camoufox.port | quote }}
+          ports:
+            - name: camoufox-ws
+              containerPort: {{ .Values.camoufox.port }}
+              protocol: TCP
+          startupProbe:
+            # tcpSocket is sufficient here: native-sidecar ordering is the real startup gate
+            # (the app container does not start until this probe passes).
+            tcpSocket:
+              port: camoufox-ws
+            failureThreshold: 12
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: camoufox-ws
+            initialDelaySeconds: 5
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.camoufox.resources | nindent 12 }}
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -100,11 +142,21 @@ spec:
             - name: data
               mountPath: {{ .Values.persistence.mountPath }}
           {{- end }}
-      {{- if .Values.persistence.enabled }}
+      {{- if or .Values.persistence.enabled .Values.camoufox.enabled }}
       volumes:
+        {{- if .Values.persistence.enabled }}
         - name: data
           persistentVolumeClaim:
             claimName: {{ .Values.persistence.existingClaim | default (printf "%s-data" (include "reading-notifs.fullname" .)) }}
+        {{- end }}
+        {{- if .Values.camoufox.enabled }}
+        # tmpfs for the browser's /dev/shm. medium: Memory is charged against the pod
+        # memory limit — see the shmSizeLimit note in values.yaml.
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: {{ .Values.camoufox.shmSizeLimit }}
+        {{- end }}
       {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:

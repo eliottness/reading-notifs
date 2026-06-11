@@ -7,22 +7,17 @@ COPY tsconfig*.json drizzle.config.ts ./
 COPY src ./src
 RUN npm run build && npm run db:generate
 
-# Runtime stage — Debian 13 (trixie) glibc base; Camoufox is a Firefox fork and
-# needs genuine glibc, so Alpine + gcompat shims are not viable (browser launch hangs).
+# Runtime stage — Debian 13 (trixie) glibc base. The app no longer ships a browser
+# (Camoufox runs in a separate sidecar container — see .omc/plans/camoufox-sidecar-split.md).
+# We keep trixie-slim (not alpine) because camoufox-js remains a runtime dependency for the
+# in-process fallback path (CAMOUFOX_WS_ENDPOINT unset), and its native bindings expect glibc.
 FROM node:26-trixie-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Installing firefox-esr pulls in the full set of transitive shared libraries that
-# Camoufox's bundled Firefox binary depends on, avoiding hand-enumeration of trixie's
-# t64-renamed lib packages. fonts-liberation gives baseline glyph coverage for rendering.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends firefox-esr fonts-liberation \
-    && rm -rf /var/lib/apt/lists/*
-
 COPY .npmrc package*.json ./
-# Install production deps then download the Camoufox browser binary (~300 MB, baked into image)
-RUN npm ci --omit=dev && npx camoufox-js fetch
+# Production deps only. No browser binary is fetched — the Camoufox sidecar supplies the browser.
+RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/drizzle ./drizzle
