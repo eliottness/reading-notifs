@@ -6,6 +6,7 @@ import { nanoid } from 'nanoid';
 import { auth } from './auth/index.js';
 import { requireAuth, requireAdmin } from './auth/middleware.js';
 import { isEmailAllowed } from './auth/allowlist.js';
+import { isAdmin } from './auth/admin.js';
 import { logger } from './logger.js';
 import { db } from './db/index.js';
 import { works, sites, subscriptions, notificationChannels } from './db/schema.js';
@@ -165,6 +166,7 @@ app.get('/dashboard', async (c) => {
   return c.html(
     <DashboardPage
       user={user}
+      isAdmin={isAdmin(user.email)}
       trackedWorks={rows.map((r) => ({ ...r.work, siteName: r.siteName }))}
     />,
   );
@@ -390,6 +392,10 @@ app.post('/admin/refresh/:workId', async (c) => {
     }
 
     const after = await db.select().from(works).where(eq(works.id, workId)).get();
+    // For the htmx-driven dashboard button: trigger a full client reload so the refreshed chapter
+    // count and lastCheckedAt render. Ignored by non-htmx (e.g. direct/API) callers, so the JSON
+    // contract below is unchanged.
+    c.header('HX-Refresh', 'true');
     logger.info('admin_refresh', {
       // Log the email domain only, never the full address (mirrors magic_link_sent above).
       email_domain: user.email.split('@')[1],

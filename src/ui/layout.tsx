@@ -30,6 +30,8 @@ export const Layout: FC<{ title?: string; user?: { email: string }; children?: C
         .text-muted { color: #666; font-size: 0.85rem; }
         .badge { display: inline-block; padding: 0.1rem 0.4rem; border-radius: 3px; font-size: 0.75rem; background: #2a2a2a; }
         .badge-green { background: #14532d; color: #86efac; }
+        .badge-red { background: #7f1d1d; color: #fca5a5; }
+        .text-error { color: #fca5a5; font-size: 0.8rem; margin-top: 0.35rem; }
         form { display: flex; flex-direction: column; gap: 0.5rem; }
         label { font-size: 0.9rem; color: #aaa; }
         .row { display: flex; gap: 0.5rem; align-items: center; justify-content: space-between; }
