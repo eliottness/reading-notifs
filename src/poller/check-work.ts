@@ -54,11 +54,7 @@ export async function checkWork(workId: string): Promise<CheckWorkResult> {
       const message = 'Could not extract a chapter count from the page';
       await db
         .update(works)
-        .set({
-          lastRefreshStatus: 'error',
-          lastRefreshErrorMessage: message,
-          lastRefreshFailureAt: new Date(),
-        })
+        .set({ lastRefreshStatus: 'error', lastRefreshErrorMessage: message })
         .where(eq(works.id, workId));
       logger.warn('poller_extract_empty', {
         work_id: workId,
@@ -97,11 +93,7 @@ export async function checkWork(workId: string): Promise<CheckWorkResult> {
     const message = err instanceof Error ? err.message : String(err);
     await db
       .update(works)
-      .set({
-        lastRefreshStatus: 'error',
-        lastRefreshErrorMessage: message,
-        lastRefreshFailureAt: new Date(),
-      })
+      .set({ lastRefreshStatus: 'error', lastRefreshErrorMessage: message })
       .where(eq(works.id, workId));
     logger.error('poller_check_failed', {
       work_id: workId,

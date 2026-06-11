@@ -102,7 +102,6 @@ describe('checkWork — refresh metadata', () => {
     const row = await getWork(id);
     expect(row?.lastRefreshStatus).toBe('error');
     expect(row?.lastRefreshErrorMessage).toBeTruthy();
-    expect(row?.lastRefreshFailureAt).toBeInstanceOf(Date);
     // The bug fix: a failed refresh must NOT look like a successful check.
     expect(row?.lastCheckedAt).toBeNull();
     expect(row?.currentChapterCount).toBe(2);
@@ -125,11 +124,7 @@ describe('checkWork — refresh metadata', () => {
     const { id, url } = await createWork(2);
     await db
       .update(works)
-      .set({
-        lastRefreshStatus: 'error',
-        lastRefreshErrorMessage: 'previous failure',
-        lastRefreshFailureAt: new Date(),
-      })
+      .set({ lastRefreshStatus: 'error', lastRefreshErrorMessage: 'previous failure' })
       .where(eq(works.id, id));
 
     staged.set(url, mangadexContent(2));

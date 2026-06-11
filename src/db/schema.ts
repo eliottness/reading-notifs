@@ -74,8 +74,6 @@ export const works = sqliteTable('works', {
   lastRefreshStatus: text('last_refresh_status', { enum: ['success', 'error'] }),
   // Human-readable failure detail; cleared on the next successful refresh.
   lastRefreshErrorMessage: text('last_refresh_error_message'),
-  // When the most recent failure occurred (left intact across later successes for forensics).
-  lastRefreshFailureAt: integer('last_refresh_failure_at', { mode: 'timestamp' }),
   pollIntervalMinutes: integer('poll_interval_minutes'),
   pollingLock: integer('polling_lock').notNull().default(0),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),

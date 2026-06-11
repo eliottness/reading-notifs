@@ -94,7 +94,6 @@ describe('GET /dashboard — refresh metadata rendering', () => {
       lastNewChapterAt: new Date('2026-06-09T18:30:00Z'),
       lastRefreshStatus: 'error',
       lastRefreshErrorMessage: 'fetch timed out after 30s',
-      lastRefreshFailureAt: new Date('2026-06-10T09:00:00Z'),
       pollingLock: 0,
       createdAt: new Date('2026-05-01T00:00:00Z'),
     });

@@ -17,7 +17,6 @@ function makeWork(overrides: Partial<WorkWithSite> = {}): WorkWithSite {
     lastNewChapterAt: null,
     lastRefreshStatus: 'success',
     lastRefreshErrorMessage: null,
-    lastRefreshFailureAt: null,
     pollIntervalMinutes: null,
     pollingLock: 0,
     createdAt: new Date('2026-05-01T10:00:00Z'),
@@ -40,7 +39,6 @@ describe('DashboardPage — refresh metadata', () => {
       makeWork({
         lastRefreshStatus: 'error',
         lastRefreshErrorMessage: 'fetch timed out after 30s',
-        lastRefreshFailureAt: new Date('2026-06-05T12:00:00Z'),
       }),
     ]);
     expect(html).toContain('Refresh failed');
