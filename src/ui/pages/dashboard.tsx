@@ -52,11 +52,7 @@ export const DashboardPage = ({
                   // so swap nothing; on success it sends `HX-Refresh: true`, which makes htmx reload
                   // the page to surface the new chapter count and lastCheckedAt rather than dumping
                   // the JSON body into the DOM.
-                  <button
-                    class="btn btn-sm"
-                    hx-post={`/admin/refresh/${work.id}`}
-                    hx-swap="none"
-                  >
+                  <button class="btn btn-sm" hx-post={`/admin/refresh/${work.id}`} hx-swap="none">
                     Refresh
                   </button>
                 )}
