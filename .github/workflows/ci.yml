@@ -43,6 +43,9 @@ jobs:
   e2e:
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    # Baseline is ~1 min; cap the job so a stalled browser download (see below) fails fast
+    # instead of hanging until GitHub's 6-hour default.
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -58,8 +61,26 @@ jobs:
       - name: Generate DB migrations
         run: npm run db:generate
 
-      - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+      # Install the apt browser libraries separately from the browser download. This is the
+      # fast, reliable half of `playwright install --with-deps`.
+      - name: Install Playwright system deps
+        run: npx playwright install-deps chromium
+
+      # Playwright 1.58's pinned chromium (build v1208) intermittently deadlocks right after
+      # the browser archive reaches 100% in non-TTY CI — the process hangs with no further
+      # output. Bound each attempt with a hard timeout and retry so a stalled download is
+      # killed and re-attempted instead of hanging the whole job.
+      - name: Install Playwright Chromium browser
+        run: |
+          for attempt in 1 2 3; do
+            echo "Chromium install attempt $attempt"
+            if timeout -k 10 300 npx playwright install chromium; then
+              exit 0
+            fi
+            echo "::warning::Chromium install attempt $attempt stalled or failed; retrying"
+          done
+          echo "::error::playwright install chromium failed after 3 attempts"
+          exit 1
 
       - name: Run Playwright E2E suite
         # The Playwright webServer (see playwright.config.ts) boots the app with the full TEST_MODE /
