@@ -41,10 +41,27 @@ export const DashboardPage = ({
                       ? `${work.currentChapterCount} chapters`
                       : 'Checking…'}
                   </span>
+                  {work.lastNewChapterAt && (
+                    <span> · New chapter {new Date(work.lastNewChapterAt).toLocaleString()}</span>
+                  )}
                   {work.lastCheckedAt && (
                     <span> · Last checked {new Date(work.lastCheckedAt).toLocaleString()}</span>
                   )}
+                  {work.lastRefreshStatus === 'error' && (
+                    <span>
+                      {' '}
+                      <span
+                        class="badge badge-red"
+                        title={work.lastRefreshErrorMessage ?? undefined}
+                      >
+                        ⚠ Refresh failed
+                      </span>
+                    </span>
+                  )}
                 </div>
+                {work.lastRefreshStatus === 'error' && work.lastRefreshErrorMessage && (
+                  <div class="text-error">{work.lastRefreshErrorMessage}</div>
+                )}
               </div>
               <div class="row" style="gap: 0.5rem; flex: 0 0 auto;">
                 {isAdmin && (

@@ -67,6 +67,13 @@ export const works = sqliteTable('works', {
   chapterListUrl: text('chapter_list_url').notNull(),
   currentChapterCount: integer('current_chapter_count').notNull().default(0),
   lastCheckedAt: integer('last_checked_at', { mode: 'timestamp' }),
+  // When we last *detected* a chapter-count increase (not the source's real publish date — adapters
+  // only extract a count). Null until the first increase is observed.
+  lastNewChapterAt: integer('last_new_chapter_at', { mode: 'timestamp' }),
+  // Outcome of the most recent refresh attempt, surfaced on the dashboard. Null until first checked.
+  lastRefreshStatus: text('last_refresh_status', { enum: ['success', 'error'] }),
+  // Human-readable failure detail; cleared on the next successful refresh.
+  lastRefreshErrorMessage: text('last_refresh_error_message'),
   pollIntervalMinutes: integer('poll_interval_minutes'),
   pollingLock: integer('polling_lock').notNull().default(0),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
