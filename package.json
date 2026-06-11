@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "//playwright-core": "LOCKED ~1.58.0 (tilde — allows 1.58.x patches, blocks minor/major) — coupled to thebtf/camoufox-server sidecar. Playwright's WS handshake requires a major.minor match (428 Precondition Required on mismatch). Do not bump minor/major without re-validating the sidecar image. See .omc/plans/camoufox-sidecar-split.md. (npm rejects // keys inside the dependencies object, so this lives at the root.)",
+  "//@playwright/test": "LOCKED ~1.58.0 — coupled to camoufox sidecar. See the //playwright-core comment above.",
   "engines": {
     "node": ">=26.0.0"
   },
@@ -35,12 +37,12 @@
     "nanoid": "^5.1.11",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.10",
-    "playwright-core": "^1.60.0",
+    "playwright-core": "~1.58.0",
     "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@playwright/test": "^1.60.0",
+    "@playwright/test": "~1.58.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.9.2",
     "@types/node-cron": "^3.0.11",

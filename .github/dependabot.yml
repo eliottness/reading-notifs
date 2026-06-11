@@ -5,6 +5,17 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
+    ignore:
+      # playwright-core is HARD-COUPLED to the camoufox sidecar image's bundled
+      # Playwright (1.58). Playwright rejects any major.minor mismatch at the WS
+      # handshake (428 Precondition Required), so a minor/major bump would silently
+      # break all stealth fetches. Patch bumps within 1.58.x are ALLOWED — the WS
+      # handshake checks major.minor only (not patch), and patches may carry security fixes.
+      # See .omc/plans/camoufox-sidecar-split.md for re-validation procedure.
+      - dependency-name: 'playwright-core'
+        update-types: ['version-update:semver-minor', 'version-update:semver-major']
+      - dependency-name: '@playwright/test'
+        update-types: ['version-update:semver-minor', 'version-update:semver-major']
 
   - package-ecosystem: github-actions
     directory: /

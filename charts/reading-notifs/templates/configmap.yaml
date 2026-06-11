@@ -14,3 +14,8 @@ data:
   SMTP_FROM: {{ .Values.config.smtp.from | quote }}
   VAPID_PUBLIC_KEY: {{ .Values.config.vapid.publicKey | quote }}
   VAPID_SUBJECT: {{ .Values.config.vapid.subject | quote }}
+  {{- if .Values.camoufox.enabled }}
+  # localhost — the native-sidecar camoufox container shares the pod network namespace.
+  # Full WS URL including the pinned path (getBrowser passes it straight to firefox.connect).
+  CAMOUFOX_WS_ENDPOINT: {{ printf "ws://localhost:%v/%s" .Values.camoufox.port .Values.camoufox.wsPath | quote }}
+  {{- end }}

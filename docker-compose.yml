@@ -9,6 +9,9 @@ services:
       DATABASE_URL: /app/data/reading-notifs.db
       APP_URL: ${APP_URL:-http://localhost:3000}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
+      # Full WS URL including the pinned path. Uses the camoufox service DNS name (not
+      # localhost) — compose services are separate containers with separate netns.
+      CAMOUFOX_WS_ENDPOINT: ws://camoufox:9222/reading-notifs
       SMTP_HOST: ${SMTP_HOST:-mailpit}
       SMTP_PORT: ${SMTP_PORT:-1025}
       SMTP_FROM: ${SMTP_FROM:-noreply@reading-notifs.local}
@@ -18,7 +21,41 @@ services:
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@reading-notifs.local}
     depends_on:
-      - mailpit
+      # Wait for the camoufox WS server to pass its healthcheck before starting the app,
+      # so the app's fail-fast startup probe does not crash on first boot.
+      camoufox:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    restart: unless-stopped
+
+  camoufox:
+    # thebtf/camoufox-server bundles Playwright 1.58.0 (via camoufox pip 0.4.11).
+    # This image+digest is LOCKED to match playwright-core@~1.58.0 in package.json.
+    # Do NOT change without re-validating — see .omc/plans/camoufox-sidecar-split.md
+    # DIGEST ALSO IN: charts/reading-notifs/templates/deployment.yaml
+    # When updating, change BOTH files and re-run the full test suite.
+    image: thebtf/camoufox-server@sha256:c19372cb2abf05dfb58cda0cc40324b157d47dc22aa791fb571c607f2337332c
+    environment:
+      WS_PATH: reading-notifs
+      WS_PORT: '9222'
+    # Prevent new-page OOM crashes. Separate tmpfs mount — NOT counted against a memory limit.
+    shm_size: 2gb
+    # No published ports: the WS endpoint is reachable only on the compose network.
+    healthcheck:
+      # python3 + bash only in this image (no curl/wget/nc). Wrap urlopen so a failure
+      # exits 1 cleanly (no traceback); hitting /json verifies the WS server actually serves.
+      test:
+        [
+          'CMD',
+          'python3',
+          '-c',
+          "import sys,urllib.request\ntry:\n urllib.request.urlopen('http://localhost:9222/json',timeout=3)\nexcept Exception:\n sys.exit(1)",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
     restart: unless-stopped
 
   mailpit:

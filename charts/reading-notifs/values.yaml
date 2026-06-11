@@ -78,6 +78,49 @@ readinessProbe:
   initialDelaySeconds: 5
   periodSeconds: 10
 
+# -- Camoufox browser sidecar. Rendered as a NATIVE SIDECAR (an initContainer with
+# restartPolicy: Always) so Kubernetes starts it and waits for its startupProbe BEFORE
+# the app container — guaranteeing the WS endpoint is ready and avoiding a startup race.
+# REQUIRES Kubernetes >= 1.29 (GA) or >= 1.28 with the SidecarContainers feature gate.
+# On older clusters the only fallback is a plain second container in spec.containers,
+# which has no startup ordering guarantee (app may CrashLoopBackOff until camoufox is up).
+camoufox:
+  # -- Enable the camoufox sidecar. Safe default: deployers pull a public image, nothing
+  # to build. When false, the app falls back to an in-process browser (no CAMOUFOX_WS_ENDPOINT).
+  enabled: true
+  image:
+    # -- Registry, overridable for air-gapped / mirror deployments (e.g. my-registry.corp.com).
+    # The repository AND digest are LOCKED in templates/deployment.yaml and are deliberately
+    # NOT exposed here: the server image's bundled Playwright (1.58) is hard-coupled to
+    # playwright-core@~1.58.0 in package.json. Letting an operator pick a different image
+    # would create silent WS-handshake version skew. Do NOT add repository/tag/digest here.
+    # See .omc/plans/camoufox-sidecar-split.md
+    registry: docker.io
+  port: 9222
+  # -- Pinned WS path → deterministic WS URL (maps to the image's WS_PATH env var). The
+  # ConfigMap's CAMOUFOX_WS_ENDPOINT is derived from port + wsPath, so both sides stay in sync.
+  wsPath: reading-notifs
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: '1'
+      # SEE NOTE BELOW — must exceed shmSizeLimit plus the browser working set.
+      memory: 3Gi
+  # -- Size limit for the /dev/shm tmpfs (emptyDir medium: Memory). In Kubernetes this tmpfs
+  # is CHARGED AGAINST the pod's memory limit, so shmSizeLimit MUST be LESS than
+  # resources.limits.memory, leaving headroom (~1Gi) for the Firefox + Camoufox working set.
+  # Example: shmSizeLimit 2Gi + ~1Gi working set = 3Gi limit. If OOM-killed, raise
+  # limits.memory or lower shmSizeLimit. (This does NOT apply to docker-compose's shm_size,
+  # which uses a separate tmpfs mount not counted against any container limit.)
+  shmSizeLimit: 2Gi
+  # TOTAL POD FOOTPRINT (both containers):
+  #   app:       requests 256Mi / limits 1Gi  (see resources above)
+  #   camoufox:  requests 512Mi / limits 3Gi
+  #   TOTAL:     requests ~768Mi / limits ~4Gi
+  # Operators must ensure nodes can schedule this amount.
+
 nodeSelector: {}
 tolerations: []
 affinity: {}
