@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "//playwright-core": "LOCKED ~1.58.0 (tilde — allows 1.58.x patches, blocks minor/major) — coupled to thebtf/camoufox-server sidecar. Playwright's WS handshake requires a major.minor match (428 Precondition Required on mismatch). Do not bump minor/major without re-validating the sidecar image. See .omc/plans/camoufox-sidecar-split.md. (npm rejects // keys inside the dependencies object, so this lives at the root.)",
-  "//@playwright/test": "LOCKED ~1.58.0 — coupled to camoufox sidecar. See the //playwright-core comment above.",
+  "//@playwright/test": "NOT coupled to the camoufox sidecar — that coupling is playwright-core's firefox.connect() only. @playwright/test merely drives Chromium for the web-UI e2e suite, so it is intentionally NOT pinned to 1.58: Playwright 1.58's browser installer deadlocks during zip extraction on Node 26 (CI's runtime). Kept on ^1.60 (Node-26-safe). Only playwright-core is version-locked to the sidecar.",
   "engines": {
     "node": ">=26.0.0"
   },
@@ -42,7 +42,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@playwright/test": "~1.58.0",
+    "@playwright/test": "^1.60.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.9.2",
     "@types/node-cron": "^3.0.11",

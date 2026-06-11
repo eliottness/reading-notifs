@@ -11,10 +11,10 @@ updates:
       # handshake (428 Precondition Required), so a minor/major bump would silently
       # break all stealth fetches. Patch bumps within 1.58.x are ALLOWED — the WS
       # handshake checks major.minor only (not patch), and patches may carry security fixes.
-      # See .omc/plans/camoufox-sidecar-split.md for re-validation procedure.
+      # NOTE: @playwright/test is deliberately NOT ignored — it is not sidecar-coupled
+      # (only playwright-core's firefox.connect() is) and must stay on a Node-26-safe
+      # release. See .omc/plans/camoufox-sidecar-split.md for re-validation procedure.
       - dependency-name: 'playwright-core'
-        update-types: ['version-update:semver-minor', 'version-update:semver-major']
-      - dependency-name: '@playwright/test'
         update-types: ['version-update:semver-minor', 'version-update:semver-major']
 
   - package-ecosystem: github-actions
